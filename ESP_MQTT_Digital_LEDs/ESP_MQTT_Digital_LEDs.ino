@@ -573,7 +573,7 @@ void loop() {
     leds[middle] = CRGB::Purple;
     leds[inner] = CRGB::Blue;
     leds[outer] = CRGB::Aqua;
-    nscale8(leds, NUM_LEDS, fadeval);
+    nscale8(leds, NUM_LEDS_PER_STRIP, fadeval);
 
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
