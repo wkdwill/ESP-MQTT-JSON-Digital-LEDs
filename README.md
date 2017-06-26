@@ -12,6 +12,7 @@ The code covered in this repository utilizes [Home Assistant's MQTT JSON Light C
 - Transitions
 - Effects with Animation Speed
 - Over-the-Air (OTA) Upload from the ArduinoIDE!
+- Mirroring of effects across multiple LED strips
 
 Some of the effects incorporate the currrently selected color (sinelon, confetti, juggle, etc) while other effects use pre-defined colors. You can also select custom transition speeds between colors. The transition variable in Home Assistant (HA) also functions to control the animation speed of the currently running animation. The input_slider and automation in the HA configuration example allow you to easily set a transition speed from HA's user interface without needing to use the Services tool. 
 
