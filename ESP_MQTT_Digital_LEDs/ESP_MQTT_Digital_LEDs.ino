@@ -66,11 +66,10 @@ const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 
 
 /*********************************** FastLED Defintions ********************************/
-#define NUM_LEDS    186
-#define DATA_PIN    5
+#define NUM_LEDS    8
 //#define CLOCK_PIN 5
-#define CHIPSET     WS2811
-#define COLOR_ORDER BRG
+#define CHIPSET     WS2812B
+#define COLOR_ORDER GRB
 
 byte realRed = 0;
 byte realGreen = 0;
@@ -85,12 +84,12 @@ byte brightness = 255;
 
 /******************************** GLOBALS for fade/flash *******************************/
 bool stateOn = false;
-bool startFade = false;
+bool startFade = true;
 bool onbeforeflash = false;
 unsigned long lastLoop = 0;
-int transitionTime = 0;
+int transitionTime = 2000;
 int effectSpeed = 0;
-bool inFade = false;
+bool inFade = true;
 int loopCount = 0;
 int stepR, stepG, stepB;
 int redVal, grnVal, bluVal;
@@ -150,13 +149,13 @@ int lightningcounter = 0;
 
 //FUNKBOX
 int idex = 0;                //-LED INDEX (0 to NUM_LEDS-1
-int TOP_INDEX = int(NUM_LEDS / 2);
+int TOP_INDEX = int(NUM_LEDS_PER_STRIP / 2);
 int thissat = 255;           //-FX LOOPS DELAY VAR
 uint8_t thishuepolice = 0;
 int antipodal_index(int i) {
   int iN = i + TOP_INDEX;
   if (i >= TOP_INDEX) {
-    iN = ( i + TOP_INDEX ) % NUM_LEDS;
+    iN = ( i + TOP_INDEX ) % NUM_LEDS_PER_STRIP;
   }
   return iN;
 }
@@ -172,14 +171,15 @@ uint8_t gHue = 0;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-struct CRGB leds[NUM_LEDS];
+struct CRGB leds[NUM_LEDS_PER_STRIP];
 
 
 
 /********************************** START SETUP*****************************************/
 void setup() {
   Serial.begin(115200);
-  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.addLeds<CHIPSET, 4, COLOR_ORDER>(leds, NUM_LEDS_PER_STRIP);
+  FastLED.addLeds<CHIPSET, 5, COLOR_ORDER>(leds, NUM_LEDS_PER_STRIP);
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
   gPal = HeatColors_p; //for FIRE
@@ -187,6 +187,7 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
+  WiFi.mode(WIFI_STA);
 
   //OTA SETUP
   ArduinoOTA.setPort(OTAport);
@@ -454,7 +455,7 @@ void reconnect() {
 
 /********************************** START Set Color*****************************************/
 void setColor(int inR, int inG, int inB) {
-  for (int i = 0; i < NUM_LEDS; i++) {
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
     leds[i].red   = inR;
     leds[i].green = inG;
     leds[i].blue  = inB;
@@ -499,7 +500,7 @@ void loop() {
     uint8_t BeatsPerMinute = 62;
     CRGBPalette16 palette = PartyColors_p;
     uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
-    for ( int i = 0; i < NUM_LEDS; i++) { //9948
+    for ( int i = 0; i < NUM_LEDS_PER_STRIP; i++) { //9948
       leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
     }
     if (transitionTime == 0 or transitionTime == NULL) {
@@ -513,7 +514,7 @@ void loop() {
   if (effectString == "candy cane") {
     static uint8_t startIndex = 0;
     startIndex = startIndex + 1; /* higher = faster motion */
-    fill_palette( leds, NUM_LEDS,
+    fill_palette( leds, NUM_LEDS_PER_STRIP,
                   startIndex, 16, /* higher = narrower stripes */
                   currentPalettestriped, 255, LINEARBLEND);
     if (transitionTime == 0 or transitionTime == NULL) {
@@ -525,8 +526,8 @@ void loop() {
 
   //EFFECT CONFETTI
   if (effectString == "confetti" ) {
-    fadeToBlackBy( leds, NUM_LEDS, 25);
-    int pos = random16(NUM_LEDS);
+    fadeToBlackBy( leds, NUM_LEDS_PER_STRIP, 25);
+    int pos = random16(NUM_LEDS_PER_STRIP);
     leds[pos] += CRGB(realRed + random8(64), realGreen, realBlue);
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
@@ -539,7 +540,7 @@ void loop() {
   if (effectString == "cyclon rainbow") {                    //Single Dot Down
     static uint8_t hue = 0;
     // First slide the led in one direction
-    for (int i = 0; i < NUM_LEDS; i++) {
+    for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
       // Set the i'th led to red
       leds[i] = CHSV(hue++, 255, 255);
       // Show the leds
@@ -550,7 +551,7 @@ void loop() {
       // Wait a little bit before we loop around and do it again
       delay(10);
     }
-    for (int i = (NUM_LEDS) - 1; i >= 0; i--) {
+    for (int i = (NUM_LEDS_PER_STRIP) - 1; i >= 0; i--) {
       // Set the i'th led to red
       leds[i] = CHSV(hue++, 255, 255);
       // Show the leds
@@ -566,9 +567,9 @@ void loop() {
 
   //EFFECT DOTS
   if (effectString == "dots") {
-    uint8_t inner = beatsin8(bpm, NUM_LEDS / 4, NUM_LEDS / 4 * 3);
-    uint8_t outer = beatsin8(bpm, 0, NUM_LEDS - 1);
-    uint8_t middle = beatsin8(bpm, NUM_LEDS / 3, NUM_LEDS / 3 * 2);
+    uint8_t inner = beatsin8(bpm, NUM_LEDS_PER_STRIP / 4, NUM_LEDS_PER_STRIP / 4 * 3);
+    uint8_t outer = beatsin8(bpm, 0, NUM_LEDS_PER_STRIP - 1);
+    uint8_t middle = beatsin8(bpm, NUM_LEDS_PER_STRIP / 3, NUM_LEDS_PER_STRIP / 3 * 2);
     leds[middle] = CRGB::Purple;
     leds[inner] = CRGB::Blue;
     leds[outer] = CRGB::Aqua;
@@ -595,7 +596,7 @@ void loop() {
 
   //EFFECT Glitter
   if (effectString == "glitter") {
-    fadeToBlackBy( leds, NUM_LEDS, 20);
+    fadeToBlackBy( leds, NUM_LEDS_PER_STRIP, 20);
     addGlitterColor(80, realRed, realGreen, realBlue);
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
@@ -606,9 +607,9 @@ void loop() {
 
   //EFFECT JUGGLE
   if (effectString == "juggle" ) {                           // eight colored dots, weaving in and out of sync with each other
-    fadeToBlackBy(leds, NUM_LEDS, 20);
+    fadeToBlackBy(leds, NUM_LEDS_PER_STRIP, 20);
     for (int i = 0; i < 8; i++) {
-      leds[beatsin16(i + 7, 0, NUM_LEDS - 1  )] |= CRGB(realRed, realGreen, realBlue);
+      leds[beatsin16(i + 7, 0, NUM_LEDS_PER_STRIP - 1  )] |= CRGB(realRed, realGreen, realBlue);
     }
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 130;
@@ -624,8 +625,8 @@ void loop() {
       FastLED.clear();
       FastLED.show();
     }
-    ledstart = random8(NUM_LEDS);           // Determine starting location of flash
-    ledlen = random8(NUM_LEDS - ledstart);  // Determine length of flash (not to go beyond NUM_LEDS-1)
+    ledstart = random8(NUM_LEDS_PER_STRIP);           // Determine starting location of flash
+    ledlen = random8(NUM_LEDS_PER_STRIP - ledstart);  // Determine length of flash (not to go beyond NUM_LEDS-1)
     for (int flashCounter = 0; flashCounter < random8(3, flashes); flashCounter++) {
       if (flashCounter == 0) dimmer = 5;    // the brightness of the leader is scaled down by a factor of 5
       else dimmer = random8(1, 3);          // return strokes are brighter than the leader
@@ -648,7 +649,7 @@ void loop() {
   //EFFECT POLICE ALL
   if (effectString == "police all") {                 //POLICE LIGHTS (TWO COLOR SOLID)
     idex++;
-    if (idex >= NUM_LEDS) {
+    if (idex >= NUM_LEDS_PER_STRIP) {
       idex = 0;
     }
     int idexR = idex;
@@ -665,13 +666,13 @@ void loop() {
   //EFFECT POLICE ONE
   if (effectString == "police one") {
     idex++;
-    if (idex >= NUM_LEDS) {
+    if (idex >= NUM_LEDS_PER_STRIP) {
       idex = 0;
     }
     int idexR = idex;
     int idexB = antipodal_index(idexR);
     int thathue = (thishuepolice + 160) % 255;
-    for (int i = 0; i < NUM_LEDS; i++ ) {
+    for (int i = 0; i < NUM_LEDS_PER_STRIP; i++ ) {
       if (i == idexR) {
         leds[i] = CHSV(thishuepolice, thissat, 255);
       }
@@ -693,7 +694,7 @@ void loop() {
   if (effectString == "rainbow") {
     // FastLED's built-in rainbow generator
     static uint8_t starthue = 0;    thishue++;
-    fill_rainbow(leds, NUM_LEDS, thishue, deltahue);
+    fill_rainbow(leds, NUM_LEDS_PER_STRIP, thishue, deltahue);
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 130;
     }
@@ -705,7 +706,7 @@ void loop() {
   if (effectString == "rainbow with glitter") {               // FastLED's built-in rainbow generator with Glitter
     static uint8_t starthue = 0;
     thishue++;
-    fill_rainbow(leds, NUM_LEDS, thishue, deltahue);
+    fill_rainbow(leds, NUM_LEDS_PER_STRIP, thishue, deltahue);
     addGlitter(80);
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 130;
@@ -716,8 +717,8 @@ void loop() {
 
   //EFFECT SIENLON
   if (effectString == "sinelon") {
-    fadeToBlackBy( leds, NUM_LEDS, 20);
-    int pos = beatsin16(13, 0, NUM_LEDS - 1);
+    fadeToBlackBy( leds, NUM_LEDS_PER_STRIP, 20);
+    int pos = beatsin16(13, 0, NUM_LEDS_PER_STRIP - 1);
     leds[pos] += CRGB(realRed, realGreen, realBlue);
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 150;
@@ -734,7 +735,7 @@ void loop() {
       FastLED.show();
     }
     const CRGB lightcolor(8, 7, 1);
-    for ( int i = 0; i < NUM_LEDS; i++) {
+    for ( int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
       if ( !leds[i]) continue; // skip black pixels
       if ( leds[i].r & 1) { // is red odd?
         leds[i] -= lightcolor; // darken if red is odd
@@ -743,7 +744,7 @@ void loop() {
       }
     }
     if ( random8() < DENSITY) {
-      int j = random16(NUM_LEDS);
+      int j = random16(NUM_LEDS_PER_STRIP);
       if ( !leds[j] ) leds[j] = lightcolor;
     }
 
@@ -763,7 +764,7 @@ void loop() {
 
     //EFFECT NOISE
     if (effectString == "noise") {
-      for (int i = 0; i < NUM_LEDS; i++) {                                     // Just onE loop to fill up the LED array as all of the pixels change.
+      for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {                                     // Just onE loop to fill up the LED array as all of the pixels change.
         uint8_t index = inoise8(i * scale, dist + i * scale) % 255;            // Get a value from the noise function. I'm using both x and y axis.
         leds[i] = ColorFromPalette(currentPalette, index, 255, LINEARBLEND);   // With that value, look up the 8 bit colour palette value and assign it to the current LED.
       }
@@ -777,10 +778,10 @@ void loop() {
 
     //EFFECT RIPPLE
     if (effectString == "ripple") {
-      for (int i = 0; i < NUM_LEDS; i++) leds[i] = CHSV(bgcol++, 255, 15);  // Rotate background colour.
+      for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) leds[i] = CHSV(bgcol++, 255, 15);  // Rotate background colour.
       switch (step) {
         case -1:                                                          // Initialize ripple variables.
-          center = random(NUM_LEDS);
+          center = random(NUM_LEDS_PER_STRIP);
           colour = random8();
           step = 0;
           break;
@@ -792,8 +793,8 @@ void loop() {
           step = -1;
           break;
         default:                                                             // Middle of the ripples.
-          leds[(center + step + NUM_LEDS) % NUM_LEDS] += CHSV(colour, 255, myfade / step * 2);   // Simple wrap from Marc Miller
-          leds[(center - step + NUM_LEDS) % NUM_LEDS] += CHSV(colour, 255, myfade / step * 2);
+          leds[(center + step + NUM_LEDS_PER_STRIP) % NUM_LEDS_PER_STRIP] += CHSV(colour, 255, myfade / step * 2);   // Simple wrap from Marc Miller
+          leds[(center - step + NUM_LEDS_PER_STRIP) % NUM_LEDS_PER_STRIP] += CHSV(colour, 255, myfade / step * 2);
           step ++;                                                         // Next step.
           break;
       }
@@ -960,7 +961,7 @@ void setupStripedPalette( CRGB A, CRGB AB, CRGB B, CRGB BA) {
 
 /********************************** START FADE************************************************/
 void fadeall() {
-  for (int i = 0; i < NUM_LEDS; i++) {
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
     leds[i].nscale8(250);  //for CYCLon
   }
 }
@@ -971,15 +972,15 @@ void fadeall() {
 void Fire2012WithPalette()
 {
   // Array of temperature readings at each simulation cell
-  static byte heat[NUM_LEDS];
+  static byte heat[NUM_LEDS_PER_STRIP];
 
   // Step 1.  Cool down every cell a little
-  for ( int i = 0; i < NUM_LEDS; i++) {
-    heat[i] = qsub8( heat[i],  random8(0, ((COOLING * 10) / NUM_LEDS) + 2));
+  for ( int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+    heat[i] = qsub8( heat[i],  random8(0, ((COOLING * 10) / NUM_LEDS_PER_STRIP) + 2));
   }
 
   // Step 2.  Heat from each cell drifts 'up' and diffuses a little
-  for ( int k = NUM_LEDS - 1; k >= 2; k--) {
+  for ( int k = NUM_LEDS_PER_STRIP - 1; k >= 2; k--) {
     heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
   }
 
@@ -990,14 +991,14 @@ void Fire2012WithPalette()
   }
 
   // Step 4.  Map from heat cells to LED colors
-  for ( int j = 0; j < NUM_LEDS; j++) {
+  for ( int j = 0; j < NUM_LEDS_PER_STRIP; j++) {
     // Scale the heat value from 0-255 down to 0-240
     // for best results with color palettes.
     byte colorindex = scale8( heat[j], 240);
     CRGB color = ColorFromPalette( gPal, colorindex);
     int pixelnumber;
     if ( gReverseDirection ) {
-      pixelnumber = (NUM_LEDS - 1) - j;
+      pixelnumber = (NUM_LEDS_PER_STRIP - 1) - j;
     } else {
       pixelnumber = j;
     }
@@ -1011,7 +1012,7 @@ void Fire2012WithPalette()
 void addGlitter( fract8 chanceOfGlitter)
 {
   if ( random8() < chanceOfGlitter) {
-    leds[ random16(NUM_LEDS) ] += CRGB::White;
+    leds[ random16(NUM_LEDS_PER_STRIP) ] += CRGB::White;
   }
 }
 
@@ -1021,7 +1022,7 @@ void addGlitter( fract8 chanceOfGlitter)
 void addGlitterColor( fract8 chanceOfGlitter, int red, int green, int blue)
 {
   if ( random8() < chanceOfGlitter) {
-    leds[ random16(NUM_LEDS) ] += CRGB(red, green, blue);
+    leds[ random16(NUM_LEDS_PER_STRIP) ] += CRGB(red, green, blue);
   }
 }
 
