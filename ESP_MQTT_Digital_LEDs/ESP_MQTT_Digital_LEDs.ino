@@ -87,7 +87,7 @@ bool stateOn = false;
 bool startFade = true;
 bool onbeforeflash = false;
 unsigned long lastLoop = 0;
-int transitionTime = 2000;
+int transitionTime = 2000; // fade transition time in ms
 int effectSpeed = 0;
 bool inFade = true;
 int loopCount = 0;
@@ -179,7 +179,7 @@ struct CRGB leds[NUM_LEDS_PER_STRIP];
 void setup() {
   Serial.begin(115200);
   FastLED.addLeds<CHIPSET, 4, COLOR_ORDER>(leds, NUM_LEDS_PER_STRIP);
-  FastLED.addLeds<CHIPSET, 5, COLOR_ORDER>(leds, NUM_LEDS_PER_STRIP);
+//  FastLED.addLeds<CHIPSET, 5, COLOR_ORDER>(leds, NUM_LEDS_PER_STRIP); // uncomment if mirroring, number indicates pin on ESP8266, add more lines if required
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
   gPal = HeatColors_p; //for FIRE
@@ -187,7 +187,7 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
-  WiFi.mode(WIFI_STA);
+  WiFi.mode(WIFI_STA); // Hides from WiFi scans
 
   //OTA SETUP
   ArduinoOTA.setPort(OTAport);
